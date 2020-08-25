@@ -32,7 +32,7 @@ exports.signupUser = (req, res) => {
           if (err.message === 'The email address is already in use by another account.') {
             return res.status(400).json({ email: 'Cet email est déjà utilisé.' })
           } else {
-            return res.status(500).json({ error: err.message })
+            return res.status(500).json({ error: 'Oups, petit problème, veuillez réessayer.' })
           }
         })
       }
@@ -65,7 +65,7 @@ exports.signupUser = (req, res) => {
     .then(() => res.json({ token }))
     .catch(err => {
       console.error(err.message)
-      return res.status(500).json({ error: err.message })
+      return res.status(500).json({ error: 'Oups, petit problème, veuillez réessayer.' })
     })
 }
 
@@ -93,7 +93,7 @@ exports.loginUser = (req, res) => {
       ) {
         return res.status(403).json({ general: 'Mauvais identifiants, merci de réessayer.' })
       }
-      return res.status(500).json({ error: err.message })
+      return res.status(500).json({ error: 'Oups, petit problème, veuillez réessayer.' })
     })
 }
 
@@ -165,6 +165,8 @@ exports.getAuthenticatedUser = (req, res) => {
       if (doc.exists) {
         userData.credentials = doc.data()
         return db.collection('likes').where('userHandle', '==', req.user.handle).get()
+      } else {
+        return res.status(403).json({ error: 'Impossible de trouver cet utilisateur.' })
       }
     })
     .then(data => {
@@ -172,10 +174,81 @@ exports.getAuthenticatedUser = (req, res) => {
       data.forEach(doc => {
         userData.likes.push(doc.data())
       })
+      return db
+        .collection('notifications')
+        .where('recipient', '==', req.user.handle)
+        .orderBy('createdAt', 'desc')
+        .limit(10)
+        .get()
+    })
+    .then(data => {
+      userData.notifications = []
+      data.forEach(doc => {
+        userData.notifications.push({
+          recipient: doc.data().recipient,
+          sender: doc.data().sender,
+          createdAt: doc.data().createdAt,
+          screamId: doc.data().screamId,
+          type: doc.data().type,
+          read: doc.data().read,
+          notificationId: doc.id
+        })
+      })
       return res.json(userData)
     })
     .catch(err => {
       console.error(err.message)
-      return res.status(500).json({ error: 'Impossible de trouver cet utilisateur.' })
+      return res.status(500).json({ error: err.message })
+    })
+}
+
+// Get any user's details
+exports.getUserDetails = (req, res) => {
+  let userData = {}
+  db.collection('users')
+    .doc(req.params.handle)
+    .get()
+    .then(doc => {
+      if (!doc.exists) {
+        return res.status(403).json({ error: 'Impossible de trouver cet utilisateur.' })
+      }
+      userData = doc.data()
+      return db.collection('screams').where('userHandle', '==', req.params.handle).orderBy('createdAt', 'desc').get()
+    })
+    .then(screams => {
+      userData.screams = []
+      screams.forEach(doc => {
+        userData.screams.push({
+          body: doc.data().body,
+          commentCount: doc.data().commentCount,
+          createdAt: doc.data().createdAt,
+          likeCount: doc.data().likeCount,
+          userHandle: doc.data().userHandle,
+          userImage: doc.data().userImage,
+          screamId: doc.id
+        })
+      })
+      return res.json(userData)
+    })
+    .catch(err => {
+      console.error(err.message)
+      return res.status(500).json({ error: err.message })
+    })
+}
+
+exports.markNotificationRead = (req, res) => {
+  let batch = db.batch()
+  req.body.forEach(notificationId => {
+    const notification = db.collection('notifications').doc(notificationId)
+    batch.update(notification, { read: true })
+  })
+  batch
+    .commit()
+    .then(() => {
+      return res.json({ message: 'Notifications lues.' })
+    })
+    .catch(err => {
+      console.error(err.message)
+      return res.status(500).json({ error: err.message })
     })
 }
