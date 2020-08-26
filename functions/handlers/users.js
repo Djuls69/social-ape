@@ -1,4 +1,5 @@
-const { db, auth } = require('../utils/firebase')
+const { auth } = require('../utils/firebase')
+const { db } = require('../utils/admin')
 const { validateSignupData, validateLoginData, reduceUserDetails } = require('../utils/validators')
 const { admin } = require('../utils/admin')
 const configApp = require('../private/configApp')

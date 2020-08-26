@@ -6,6 +6,6 @@ admin.initializeApp({
   databaseURL: 'https://social-ape-6bd3d.firebaseio.com'
 })
 
-const dbAdmin = admin.firestore()
+const db = admin.firestore()
 
-module.exports = { admin, dbAdmin }
+module.exports = { admin, db }

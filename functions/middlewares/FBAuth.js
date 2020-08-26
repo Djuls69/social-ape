@@ -1,5 +1,4 @@
-const { admin } = require('../utils/admin')
-const { db } = require('../utils/firebase')
+const { admin, db } = require('../utils/admin')
 
 exports.FBAuth = (req, res, next) => {
   let idToken
